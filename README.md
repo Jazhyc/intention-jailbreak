@@ -36,4 +36,6 @@ uv run python your_script.py
 
 - `configs/` - Configuration files for Hydra
 - `notes/` - Markdown notes documenting experimental processes
-- `data/` - Data directory (gitignored)
+- `data/` - Data directory (contents gitignored)
+- `notebooks/` - Jupyter notebooks for data analysis and experimentation
+- `src/intention_jailbreak/` - Main Python package source code

@@ -207,7 +207,8 @@ marimo/_lsp/
 __marimo__/
 
 # Project-specific
-data/
+data/*
+!data/.gitkeep
 
 # Hydra outputs
 outputs/
