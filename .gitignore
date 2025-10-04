@@ -205,3 +205,17 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project-specific
+data/
+
+# Hydra outputs
+outputs/
+multirun/
+
+# Model checkpoints and caches
+*.pt
+*.pth
+*.ckpt
+models/
+checkpoints/
