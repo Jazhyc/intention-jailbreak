@@ -12,13 +12,15 @@ This project uses [uv](https://github.com/astral-sh/uv) for Python package manag
 
 ### Setup
 
-1. Install Python 3.12 and create a virtual environment with all dependencies:
+1. Install Python 3.12, create a virtual environment, and install the project in editable mode with all dependencies:
 
 ```bash
 uv sync
 ```
 
-2. Install the optional vllm dependency:
+This will install the `intention_jailbreak` package in editable mode, so changes to the source code are immediately reflected.
+
+2. (Optional) Install the vllm dependency:
 
 ```bash
 uv sync --extra vllm
@@ -30,10 +32,16 @@ uv sync --extra vllm
 source .venv/bin/activate
 ```
 
-Alternatively, you can run commands directly with uv:
+Alternatively, you can run commands directly with uv without activating:
 
 ```bash
 uv run python your_script.py
+```
+
+Or run Python scripts/notebooks with the project automatically available:
+
+```bash
+uv run jupyter notebook
 ```
 
 ## Project Structure
