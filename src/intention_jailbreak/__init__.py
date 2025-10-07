@@ -7,3 +7,6 @@ from dotenv import load_dotenv
 load_dotenv()
 
 __version__ = "0.1.0"
+
+# Make dataset utilities easily accessible
+from . import dataset
