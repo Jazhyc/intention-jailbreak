@@ -95,6 +95,9 @@ def main(cfg: DictConfig):
     print("Training...")
     trainer.train()
     
+    # Final model results
+    trainer.evaluate()
+    
     # Save model
     print("Saving model...")
     final_model_dir = Path(cfg.training.output_dir) / "final_model"
