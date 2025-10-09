@@ -33,7 +33,7 @@ training:
   
   # Optimization
   optim: "adamw_bnb_8bit"
-  bf16: true
+  # bf16: true
   torch_compile: true
   
   # Evaluation
