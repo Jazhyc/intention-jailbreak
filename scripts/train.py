@@ -7,6 +7,9 @@ Usage:
     python scripts/train.py --multirun training.learning_rate=5e-5,1e-4,2e-4
 """
 
+import os
+os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
 from pathlib import Path
 import hydra
 from omegaconf import DictConfig, OmegaConf
@@ -73,8 +76,8 @@ def main(cfg: DictConfig):
     
     # Tokenize
     print("Tokenizing...")
-    train_dataset = tokenize_dataset(train_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column)
-    val_dataset = tokenize_dataset(val_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column)
+    train_dataset = tokenize_dataset(train_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column, num_proc=cfg.dataset.num_proc)
+    val_dataset = tokenize_dataset(val_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column, num_proc=cfg.dataset.num_proc)
     
     # Setup training
     training_args = TrainingArguments(**cfg.training)

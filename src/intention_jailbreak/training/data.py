@@ -64,7 +64,7 @@ def prepare_classification_data(
     return train_dataset, val_dataset
 
 
-def tokenize_dataset(dataset: Dataset, tokenizer, max_length: int, text_column: str = 'prompt'):
+def tokenize_dataset(dataset: Dataset, tokenizer, max_length: int, text_column: str = 'prompt', num_proc: int = 1):
     """
     Tokenize a dataset.
     
@@ -73,6 +73,7 @@ def tokenize_dataset(dataset: Dataset, tokenizer, max_length: int, text_column: 
         tokenizer: Tokenizer to use
         max_length: Maximum sequence length
         text_column: Name of the text column to tokenize
+        num_proc: Number of processes to use for parallel tokenization
     
     Returns:
         Tokenized dataset
@@ -90,6 +91,7 @@ def tokenize_dataset(dataset: Dataset, tokenizer, max_length: int, text_column: 
         tokenize_function,
         batched=True,
         remove_columns=[text_column],
+        num_proc=num_proc,
         desc="Tokenizing"
     )
     
