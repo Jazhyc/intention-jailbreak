@@ -135,7 +135,7 @@ def test_mini_training():
                 eval_strategy="steps",
                 eval_steps=1,
                 save_strategy="no",
-                logging_dir="logs/tensorboard",
+                logging_dir="logs",
                 logging_steps=1,
                 report_to="wandb",
                 remove_unused_columns=True,
