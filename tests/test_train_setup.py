@@ -44,7 +44,8 @@ def test_model_loading():
         model = AutoModelForSequenceClassification.from_pretrained(
             model_name,
             num_labels=2,
-            problem_type="single_label_classification"
+            problem_type="single_label_classification",
+            dtype=torch.bfloat16
         )
         
         params = sum(p.numel() for p in model.parameters()) / 1e6
@@ -72,6 +73,101 @@ def test_forward_pass(tokenizer, model):
         return True
     except Exception as e:
         print(f"✗ Failed: {e}")
+        return False
+
+
+def test_mini_training():
+    """Test a mini training run to verify the full pipeline."""
+    print("\nTesting Mini Training Pipeline...")
+    
+    try:
+        from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
+        from datasets import Dataset
+        from intention_jailbreak.training.metrics import compute_classification_metrics
+        import tempfile
+        import shutil
+        
+        # Create tiny synthetic dataset
+        train_data = {
+            'prompt': ['How do I make a bomb?', 'What is Python?', 'How to hack a computer?', 'Explain gravity'],
+            'label': [1, 0, 1, 0]  # 1=harmful, 0=unharmful
+        }
+        val_data = {
+            'prompt': ['How to steal a car?', 'What is machine learning?'],
+            'label': [1, 0]
+        }
+        
+        train_dataset = Dataset.from_dict(train_data)
+        val_dataset = Dataset.from_dict(val_data)
+        
+        # Load model and tokenizer
+        model_name = "answerdotai/ModernBERT-base"
+        tokenizer = AutoTokenizer.from_pretrained(model_name)
+        model = AutoModelForSequenceClassification.from_pretrained(
+            model_name,
+            num_labels=2,
+            problem_type="single_label_classification",
+            torch_dtype=torch.bfloat16
+        )
+        
+        # Tokenize
+        def tokenize_function(examples):
+            return tokenizer(examples['prompt'], padding='max_length', truncation=True, max_length=128)
+        
+        train_dataset = train_dataset.map(tokenize_function, batched=True, remove_columns=['prompt'])
+        val_dataset = val_dataset.map(tokenize_function, batched=True, remove_columns=['prompt'])
+        
+        # Create temp directory for output
+        temp_dir = tempfile.mkdtemp()
+        
+        try:
+            # Mini training config
+            import os
+            os.environ["WANDB_PROJECT"] = "classifier-test"
+            os.environ["WANDB_DIR"] = "logs/wandb"
+            
+            training_args = TrainingArguments(
+                output_dir=temp_dir,
+                max_steps=2,
+                per_device_train_batch_size=2,
+                per_device_eval_batch_size=2,
+                learning_rate=1e-4,
+                eval_strategy="steps",
+                eval_steps=1,
+                save_strategy="no",
+                logging_dir="logs/tensorboard",
+                logging_steps=1,
+                report_to="wandb",
+                remove_unused_columns=True,
+                seed=42,
+            )
+            
+            trainer = Trainer(
+                model=model,
+                args=training_args,
+                train_dataset=train_dataset,
+                eval_dataset=val_dataset,
+                processing_class=tokenizer,
+                compute_metrics=compute_classification_metrics,
+            )
+            
+            # Train for 2 steps
+            trainer.train()
+            
+            # Evaluate
+            eval_results = trainer.evaluate()
+            
+            print(f"✓ Mini training successful: F1={eval_results.get('eval_f1', 0):.3f}")
+            return True
+            
+        finally:
+            # Clean up temp directory
+            shutil.rmtree(temp_dir, ignore_errors=True)
+            
+    except Exception as e:
+        print(f"✗ Failed: {e}")
+        import traceback
+        traceback.print_exc()
         return False
 
 
@@ -111,6 +207,9 @@ def main():
     
     if success:
         results.append(("Forward Pass", test_forward_pass(tokenizer, model)))
+    
+    # Run mini training test
+    results.append(("Mini Training", test_mini_training()))
     
     print("\nSummary:")
     for name, result in results:

@@ -10,6 +10,7 @@ Usage:
 from pathlib import Path
 import hydra
 from omegaconf import DictConfig, OmegaConf
+import torch
 import wandb
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
 
@@ -43,14 +44,22 @@ def main(cfg: DictConfig):
     
     # Load data
     print("Loading dataset...")
-    train_df, test_df = wildguardmix.load_and_split(**cfg.dataset)
+    train_df, test_df = wildguardmix.load_and_split(
+        subset=cfg.dataset.subset,
+        test_size=cfg.dataset.test_size,
+        random_state=cfg.dataset.random_state
+    )
     
     # Prepare data (no test set used during training)
     print("Preparing data...")
     train_dataset, val_dataset = prepare_classification_data(
         train_df=train_df,
         test_df=test_df,
-        **cfg.dataset
+        val_size=cfg.dataset.val_size,
+        label_column=cfg.dataset.label_column,
+        text_column=cfg.dataset.text_column,
+        positive_label=cfg.dataset.positive_label,
+        random_state=cfg.dataset.random_state
     )
     
     # Load model
@@ -58,6 +67,7 @@ def main(cfg: DictConfig):
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.name)
     model = AutoModelForSequenceClassification.from_pretrained(
         cfg.model.name,
+        dtype=torch.bfloat16,
         **{k: v for k, v in cfg.model.items() if k != 'name' and k != 'max_length'}
     )
     
@@ -74,7 +84,7 @@ def main(cfg: DictConfig):
         args=training_args,
         train_dataset=train_dataset,
         eval_dataset=val_dataset,
-        tokenizer=tokenizer,
+        processing_class=tokenizer,
         compute_metrics=compute_classification_metrics,
     )
     

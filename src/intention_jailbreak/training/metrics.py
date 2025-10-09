@@ -20,8 +20,8 @@ def compute_classification_metrics(eval_pred) -> Dict[str, float]:
     
     accuracy = accuracy_score(labels, predictions)
     f1 = f1_score(labels, predictions, average='binary')
-    precision = precision_score(labels, predictions, average='binary', zero_division=0)
-    recall = recall_score(labels, predictions, average='binary', zero_division=0)
+    precision = precision_score(labels, predictions, average='binary')
+    recall = recall_score(labels, predictions, average='binary')
     
     return {
         'accuracy': accuracy,

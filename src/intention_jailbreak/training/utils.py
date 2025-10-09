@@ -4,6 +4,7 @@ import numpy as np
 import torch
 from transformers import set_seed
 
+torch.set_float32_matmul_precision('high')
 
 def set_all_seeds(seed: int):
     """
