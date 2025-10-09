@@ -38,7 +38,7 @@ def load(subset: str = 'wildguardtrain') -> pd.DataFrame:
 
 def load_and_split(
     subset: str = 'wildguardtrain',
-    test_size: float = 0.4,
+    test_size: float = 0.2,
     random_state: int = 42
 ) -> Tuple[pd.DataFrame, pd.DataFrame]:
     """

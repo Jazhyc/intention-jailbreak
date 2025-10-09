@@ -200,6 +200,7 @@ cython_debug/
 #  refer to https://docs.cursor.com/context/ignore-files
 .cursorignore
 .cursorindexingignore
+agents.md
 
 # Marimo
 marimo/_static/
@@ -210,13 +211,14 @@ __marimo__/
 data/*
 !data/.gitkeep
 
-# Hydra outputs
-outputs/
-multirun/
-
 # Model checkpoints and caches
 *.pt
 *.pth
 *.ckpt
-models/
+models/*
+!models/.gitkeep
 checkpoints/
+
+# Logs
+logs/*
+!logs/.gitkeep

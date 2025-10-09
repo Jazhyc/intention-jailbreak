@@ -34,8 +34,46 @@ uv run python your_script.py
 
 ## Project Structure
 
-- `configs/` - Configuration files for Hydra
-- `notes/` - Markdown notes documenting experimental processes
-- `data/` - Data directory (contents gitignored)
-- `notebooks/` - Jupyter notebooks for data analysis and experimentation
-- `src/intention_jailbreak/` - Main Python package source code
+```
+intention-jailbreak/
+├── configs/                      # Hydra configuration files
+│   ├── train_config.yaml        # Training configuration
+│   └── sweep_config.yaml        # Hyperparameter sweep config
+├── data/                         # Data directory (gitignored)
+├── logs/                         # Training logs (gitignored)
+├── models/                       # Trained models (gitignored)
+├── notebooks/                    # Jupyter notebooks for analysis
+├── notes/                        # Markdown documentation
+├── scripts/                      # Training scripts
+│   ├── train.py                 # Main training script
+│   └── run_sweep.py             # Sweep helper
+├── src/intention_jailbreak/      # Main Python library
+│   ├── dataset/                 # Dataset utilities
+│   └── training/                # Training utilities
+├── tests/                        # Test scripts
+└── pyproject.toml               # Project dependencies
+```
+
+## Quick Start
+
+### Data Analysis
+```bash
+jupyter notebook notebooks/wildguardmix_analysis.ipynb
+```
+
+### Training
+```bash
+# Test setup first
+python tests/test_setup.py
+
+# Train with default config
+python scripts/train.py
+
+# Override config
+python scripts/train.py training.per_device_train_batch_size=128
+
+# Hyperparameter sweep
+python scripts/train.py --multirun training.learning_rate=5e-5,1e-4,2e-4
+```
+
+See `scripts/README.md` and `tests/README.md` for more details.

@@ -1,0 +1,71 @@
+# Training Configuration for WildGuardMix Classifier
+
+# Global settings
+seed: &seed 42
+
+# Model Configuration
+model:
+  name: "answerdotai/ModernBERT-base"
+  max_length: 512
+  num_labels: 2
+  problem_type: "single_label_classification"
+
+# Dataset Configuration
+dataset:
+  subset: "wildguardtrain"
+  test_size: 0.2
+  val_size: 0.1
+  random_state: *seed
+  label_column: "prompt_harm_label"
+  text_column: "prompt"
+  positive_label: "harmful"
+
+# Training Arguments (passed directly to TrainingArguments)
+training:
+  output_dir: "models/modernbert-classifier"
+  num_train_epochs: 1
+  per_device_train_batch_size: 256
+  per_device_eval_batch_size: 256
+  learning_rate: 1.0e-4
+  
+  # Optimization
+  optim: "adamw_bnb_8bit"
+  bf16: true
+  torch_compile: true
+  
+  # Evaluation
+  eval_strategy: "steps"
+  eval_steps: 0.2  # Every 20% of epoch
+  save_strategy: "epoch"
+  save_total_limit: 2
+  load_best_model_at_end: true
+  metric_for_best_model: "f1"
+  greater_is_better: true
+  
+  # Logging
+  logging_dir: "logs/tensorboard"
+  logging_steps: 10
+  report_to: "wandb"
+  
+  # Misc
+  remove_unused_columns: true
+  push_to_hub: false
+  seed: *seed
+
+# WandB Configuration
+wandb:
+  entity: "intention-analysis"
+  project: "classifier-training"
+  dir: "logs/wandb"
+  run_name: null
+  tags:
+    - "modernbert"
+    - "wildguardmix"
+    - "binary-classification"
+
+# Hydra Configuration
+hydra:
+  run:
+    dir: logs/hydra/runs/${now:%Y-%m-%d}/${now:%H-%M-%S}
+  sweep:
+    dir: logs/hydra/multirun/${now:%Y-%m-%d}/${now:%H-%M-%S}

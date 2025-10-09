@@ -6,8 +6,8 @@ This document describes the stratification methodology used to split the WildGua
 
 ## Split Ratio
 
-- **Training Set**: 60%
-- **Test Set** (For later annotation): 40%
+- **Training Set**: 80% (69k samples)
+- **Test Set** (For later annotation): 20% (17k samples)
 
 ## Stratification Strategy
 
@@ -35,9 +35,9 @@ The stratified split successfully preserved the original dataset's distributions
 
 Although we did not explicitly stratify on `response_harm_label`, the distribution shift was minimal:
 
-- **Maximum difference**: ~0.09%
+- **Difference**: ~0.1%
 
-This small shift indicates that the WildGuardMix dataset was already well-balanced with respect to response harm labels. The natural correlation between prompt characteristics (which we did stratify on) and response harm labels resulted in an inherently balanced split without explicit stratification.
+This small shift indicates that the WildGuardMix dataset was already well-balanced with respect to response harm labels.
 
 ## Reproducibility
 

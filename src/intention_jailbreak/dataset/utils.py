@@ -5,6 +5,8 @@ import pandas as pd
 from datasets import load_dataset, DatasetDict
 from sklearn.model_selection import train_test_split
 
+from ..common import STRATIFICATION_COLUMNS
+
 
 def load_wildguardmix(subset: str = 'wildguardtrain') -> DatasetDict:
     """
@@ -36,13 +38,13 @@ def create_stratified_split(
         test_size: The proportion of the dataset to include in the test split.
         random_state: Random state for reproducibility.
         stratify_columns: List of column names to stratify on. 
-                         Default is ['prompt_harm_label', 'adversarial', 'subcategory'].
+                         Defaults to STRATIFICATION_COLUMNS from common module.
     
     Returns:
         Tuple of (train_df, test_df)
     """
     if stratify_columns is None:
-        stratify_columns = ['prompt_harm_label', 'adversarial', 'subcategory']
+        stratify_columns = STRATIFICATION_COLUMNS
     
     # Create a combined stratification column
     df_copy = df.copy()
