@@ -13,6 +13,7 @@ os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from pathlib import Path
 import hydra
 from omegaconf import DictConfig, OmegaConf
+import numpy as np
 import torch
 import wandb
 from transformers import AutoTokenizer, AutoModelForSequenceClassification, TrainingArguments, Trainer
@@ -23,7 +24,9 @@ from intention_jailbreak.training import (
     prepare_classification_data,
     tokenize_dataset,
     compute_classification_metrics,
+    compute_sample_weights,
     print_gpu_info,
+    WeightedTrainer,
 )
 
 
@@ -55,7 +58,7 @@ def main(cfg: DictConfig):
     
     # Prepare data (no test set used during training)
     print("Preparing data...")
-    train_dataset, val_dataset = prepare_classification_data(
+    train_dataset, val_dataset, train_df_processed, val_df_processed = prepare_classification_data(
         train_df=train_df,
         test_df=test_df,
         val_size=cfg.dataset.val_size,
@@ -74,6 +77,32 @@ def main(cfg: DictConfig):
         **{k: v for k, v in cfg.model.items() if k != 'name' and k != 'max_length'}
     )
     
+    # Compute sample weights if enabled (before tokenization)
+    use_label_weights = cfg.dataset.get('use_label_weights', False)
+    use_subcategory_weights = cfg.dataset.get('use_subcategory_weights', False)
+    use_any_weights = use_label_weights or use_subcategory_weights
+    
+    if use_any_weights:
+        weight_desc = []
+        if use_label_weights:
+            weight_desc.append("labels")
+        if use_subcategory_weights:
+            weight_desc.append(f"'{cfg.dataset.class_weight_column}'")
+        print(f"Computing sample weights based on {' and '.join(weight_desc)}...")
+        
+        train_weights = compute_sample_weights(
+            train_df_processed,
+            label_column='label',
+            weight_column=cfg.dataset.class_weight_column if use_subcategory_weights else None,
+            use_label_weights=use_label_weights,
+            use_subcategory_weights=use_subcategory_weights
+        )
+        # Add weights to dataset
+        train_dataset = train_dataset.add_column("weight", train_weights.tolist())
+        # For validation, we typically don't use weights, but add uniform weights
+        val_weights = np.ones(len(val_dataset))
+        val_dataset = val_dataset.add_column("weight", val_weights.tolist())
+    
     # Tokenize
     print("Tokenizing...")
     train_dataset = tokenize_dataset(train_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column, num_proc=cfg.dataset.num_proc)
@@ -82,7 +111,9 @@ def main(cfg: DictConfig):
     # Setup training
     training_args = TrainingArguments(**cfg.training)
     
-    trainer = Trainer(
+    # Use WeightedTrainer if weights are specified, otherwise standard Trainer
+    trainer_class = WeightedTrainer if use_any_weights else Trainer
+    trainer = trainer_class(
         model=model,
         args=training_args,
         train_dataset=train_dataset,

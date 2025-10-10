@@ -5,29 +5,32 @@ seed: &seed 42
 
 # Model Configuration
 model:
-  name: "answerdotai/ModernBERT-base"
-  max_length: 256
+  name: "answerdotai/ModernBERT-large"
+  max_length: 2048
   num_labels: 2
   problem_type: "single_label_classification"
 
 # Dataset Configuration
 dataset:
   subset: "wildguardtrain"
-  test_size: 0.2
+  test_size: 0.8
   val_size: 0.1
   random_state: *seed
   label_column: "prompt_harm_label"
   text_column: "prompt"
   positive_label: "harmful"
   num_proc: 8  # Number of workers for tokenization
+  use_label_weights: true  # Weight by harm label frequency (harmful vs unharmful)
+  use_subcategory_weights: false  # Weight by subcategory frequency
+  class_weight_column: "subcategory"  # Column to compute subcategory weights from
 
 # Training Arguments (passed directly to TrainingArguments)
 training:
   output_dir: "models/modernbert-classifier"
   num_train_epochs: 3
-  per_device_train_batch_size: 96
-  per_device_eval_batch_size: 96
-  learning_rate: 1.0e-4
+  per_device_train_batch_size: 48
+  per_device_eval_batch_size: 48
+  learning_rate: 5e-5
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.1
   

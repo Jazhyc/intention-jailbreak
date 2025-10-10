@@ -1,8 +1,10 @@
 """Data preparation utilities for classification tasks."""
 
 import pandas as pd
-from typing import Tuple
+import numpy as np
+from typing import Tuple, Optional, Dict
 from sklearn.model_selection import train_test_split
+from sklearn.utils.class_weight import compute_class_weight
 from datasets import Dataset
 
 from ..common import STRATIFICATION_COLUMNS
@@ -16,7 +18,7 @@ def prepare_classification_data(
     text_column: str = 'prompt',
     positive_label: str = 'harmful',
     random_state: int = 42
-) -> Tuple[Dataset, Dataset]:
+) -> Tuple[Dataset, Dataset, pd.DataFrame, pd.DataFrame]:
     """
     Prepare data for binary classification (train and val only, no test).
     
@@ -33,7 +35,8 @@ def prepare_classification_data(
         random_state: Random state for reproducibility
     
     Returns:
-        Tuple of (train_dataset, val_dataset) as HuggingFace Datasets
+        Tuple of (train_dataset, val_dataset, train_df, val_df) where datasets are HuggingFace Datasets
+        and dataframes are pandas DataFrames with all original columns plus 'label'
     """
     # Create combined stratification key using shared columns
     stratify_key = train_df[STRATIFICATION_COLUMNS].astype(str).agg('_'.join, axis=1)
@@ -58,10 +61,12 @@ def prepare_classification_data(
     
     print(f"Positive class ({positive_label}): Train {train_df['label'].mean()*100:.1f}%, Val {val_df['label'].mean()*100:.1f}%")
     
-    train_dataset = Dataset.from_pandas(train_df[[text_column, 'label']])
-    val_dataset = Dataset.from_pandas(val_df[[text_column, 'label']])
+    # Keep only necessary columns for dataset (text and label)
+    # Note: We'll add 'weight' column later if class weighting is enabled
+    train_dataset = Dataset.from_pandas(train_df[[text_column, 'label']].reset_index(drop=True))
+    val_dataset = Dataset.from_pandas(val_df[[text_column, 'label']].reset_index(drop=True))
     
-    return train_dataset, val_dataset
+    return train_dataset, val_dataset, train_df, val_df
 
 
 def tokenize_dataset(dataset: Dataset, tokenizer, max_length: int, text_column: str = 'prompt', num_proc: int = 1):
@@ -96,3 +101,75 @@ def tokenize_dataset(dataset: Dataset, tokenizer, max_length: int, text_column: 
     )
     
     return tokenized
+
+
+def compute_sample_weights(
+    df: pd.DataFrame,
+    label_column: str = 'label',
+    weight_column: Optional[str] = None,
+    use_label_weights: bool = True,
+    use_subcategory_weights: bool = False
+) -> np.ndarray:
+    """
+    Compute sample weights based on label frequency and/or subcategory frequency.
+    
+    Uses the formula: n_samples / (n_classes * np.bincount(y))
+    
+    Args:
+        df: DataFrame with label and optionally subcategory columns
+        label_column: Name of binary label column (0/1)
+        weight_column: Column to compute subcategory weights from (e.g., 'subcategory')
+        use_label_weights: Whether to weight by label (harmful vs unharmful) frequency
+        use_subcategory_weights: Whether to weight by subcategory frequency
+    
+    Returns:
+        Array of sample weights (one per sample in df)
+    """
+    n_samples = len(df)
+    sample_weights = np.ones(n_samples)
+    
+    # Compute weights based on label (harmful/unharmful) if enabled
+    if use_label_weights:
+        labels = df[label_column].values
+        unique_labels, encoded_labels = np.unique(labels, return_inverse=True)
+        n_label_classes = len(unique_labels)
+        label_counts = np.bincount(encoded_labels)
+        label_class_weights = n_samples / (n_label_classes * label_counts)
+        label_weights = label_class_weights[encoded_labels]
+        sample_weights = sample_weights * label_weights
+        
+        print(f"Label weighting enabled:")
+        print(f"  Label classes: {n_label_classes} (counts: {label_counts})")
+        print(f"  Label weights: {label_class_weights}")
+    
+    # Compute weights based on subcategory if enabled
+    if use_subcategory_weights:
+        if weight_column is None:
+            raise ValueError("weight_column must be specified when use_subcategory_weights=True")
+        
+        subcategories = df[weight_column].values
+        unique_subcats, encoded_subcats = np.unique(subcategories, return_inverse=True)
+        n_subcat_classes = len(unique_subcats)
+        subcat_counts = np.bincount(encoded_subcats)
+        subcat_class_weights = n_samples / (n_subcat_classes * subcat_counts)
+        subcat_weights = subcat_class_weights[encoded_subcats]
+        sample_weights = sample_weights * subcat_weights
+        
+        print(f"Subcategory weighting enabled ('{weight_column}'):")
+        print(f"  Subcategories: {n_subcat_classes}")
+        # Show per-subcategory statistics (first 5)
+        for i, subcat in enumerate(unique_subcats[:5]):
+            count = subcat_counts[i]
+            weight = subcat_class_weights[i]
+            print(f"    {subcat}: {count} samples, weight={weight:.3f}")
+        if len(unique_subcats) > 5:
+            print(f"    ... and {len(unique_subcats) - 5} more subcategories")
+    
+    # Normalize so mean weight = 1.0
+    sample_weights = sample_weights / sample_weights.mean()
+    
+    print(f"Final sample weights:")
+    print(f"  Weight range: [{sample_weights.min():.3f}, {sample_weights.max():.3f}]")
+    print(f"  Mean weight: {sample_weights.mean():.3f}")
+    
+    return sample_weights
