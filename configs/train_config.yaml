@@ -33,10 +33,13 @@ training:
   learning_rate: 1e-4
   lr_scheduler_type: "cosine"
   warmup_ratio: 0.1
+  weight_decay: 1e-5
+  adam_beta1: 0.9
+  adam_beta2: 0.98
+  adam_epsilon: 1e-6
   
   # Optimization
   optim: "adamw_bnb_8bit"
-  # bf16: true
   torch_compile: true
   
   # Evaluation

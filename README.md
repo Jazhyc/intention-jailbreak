@@ -32,6 +32,8 @@ Alternatively, you can run commands directly with uv without activating:
 uv run python your_script.py
 ```
 
+For faster training, install flash attention
+
 ## Project Structure
 
 ```
