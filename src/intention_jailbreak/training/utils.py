@@ -69,11 +69,11 @@ class WeightedTrainer(Trainer):
         return (loss, outputs) if return_outputs else loss
 
 class SequentialEnsembleTrainer(Trainer):
-    def __init__(self, ensemble, *args, **kwargs):
-        super().__init__(model=ensemble, *args, **kwargs)
-        self.ensemble = ensemble
+    def __init__(self, model: DeepEnsembleClassifier, *args, **kwargs):
+        super().__init__(model=model, *args, **kwargs)
+        self.ensemble = model
         self.current_model_idx = 0
-        self.models_trained = [False] * len(ensemble.models)
+        self.models_trained = [False] * len(self.ensemble.models)
     
     def training_step(self, model, inputs):
         """Only train one model at a time per training step"""

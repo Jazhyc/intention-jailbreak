@@ -10,7 +10,7 @@ Usage:
 import os
 
 from intention_jailbreak.ensemble.deepensembleclassifier import DeepEnsembleClassifier
-from intention_jailbreak.training.utils import EnsembleTrainer, SequentialEnsembleTrainer
+from intention_jailbreak.training.utils import SequentialEnsembleTrainer
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from pathlib import Path
@@ -108,7 +108,7 @@ def main(cfg: DictConfig):
     
     print(f"Loading model for: {cfg.model.name}")
     model = None
-    if cfg.training.ensemble.enabled:
+    if cfg.ensemble.enabled:
         print(f"Training an ensemble of {cfg.ensemble.num_models} models")
         model = DeepEnsembleClassifier(
             model_fn=lambda: AutoModelForSequenceClassification.from_pretrained(
@@ -129,7 +129,7 @@ def main(cfg: DictConfig):
     training_args = TrainingArguments(**cfg.training)
     
     # Use WeightedTrainer if weights are specified, otherwise standard Trainer
-    trainer_class =  SequentialEnsembleTrainer if cfg.training.ensemble.enabled else WeightedTrainer if use_any_weights else Trainer
+    trainer_class =  SequentialEnsembleTrainer if cfg.ensemble.enabled else WeightedTrainer if use_any_weights else Trainer
     trainer = trainer_class(
             model=model,
             args=training_args,

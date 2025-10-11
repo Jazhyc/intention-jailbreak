@@ -24,12 +24,12 @@ dataset:
   use_subcategory_weights: false  # Weight by subcategory frequency
   class_weight_column: "subcategory"  # Column to compute subcategory weights from
 
+ensemble:
+  enabled: True
+  num_models: 3
+
 # Training Arguments (passed directly to TrainingArguments)
 training:
-  ensemble:
-    enabled: true
-    num_models: 5
-
   output_dir: "models/modernbert-classifier"
   num_train_epochs: 3
   per_device_train_batch_size: 48

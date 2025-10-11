@@ -3,16 +3,20 @@
 
 # Utils to estimate uncertainty calibration
 
-from .numpy_metrics import accuracy
 import os
 import matplotlib.pyplot as plt
 import wandb
-
+import numpy as np
 import numpy as np
 from itertools import tee
 
 EPSILON = 1e-5
 
+def accuracy(y_true, y_pred):
+    """
+        Simple categorical accuracy.
+    """
+    return np.mean(y_true == y_pred)
 
 # From itertools recipes
 def pairwise(iterable):

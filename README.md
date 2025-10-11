@@ -66,7 +66,7 @@ jupyter notebook notebooks/wildguardmix_analysis.ipynb
 ### Training
 ```bash
 # Test setup first
-python tests/test_setup.py
+python tests/test_train_setup.py
 
 # Train with default config
 python scripts/train.py
