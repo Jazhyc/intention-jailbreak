@@ -12,6 +12,9 @@ Usage:
 """
 
 import os
+
+from intention_jailbreak.ensemble.deepensembleclassifier import DeepEnsembleClassifier
+from intention_jailbreak.utils.calibration import classifier_calibration_curve, classifier_calibration_error, plot_calibration_curve
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 os.environ["WANDB_DIR"] = "logs/wandb"
 
@@ -34,6 +37,7 @@ def main():
     
     # Configuration
     model_path = "models/modernbert-classifier/final_model"
+    ensemble = False
     output_dir = Path("data/test_predictions")
     output_dir.mkdir(parents=True, exist_ok=True)
     
@@ -60,10 +64,20 @@ def main():
     # Load model and tokenizer
     print(f"\nLoading model from: {model_path}")
     tokenizer = AutoTokenizer.from_pretrained(model_path)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        model_path,
-        dtype=torch.bfloat16
-    )
+
+    if ensemble:
+        model = DeepEnsembleClassifier.from_pretrained(
+            model_path,
+            model_fn=lambda: AutoModelForSequenceClassification.from_pretrained(
+                model_path,
+                dtype=torch.bfloat16
+            )
+        )
+    else:
+        model = AutoModelForSequenceClassification.from_pretrained(
+            model_path,
+            dtype=torch.bfloat16
+        )
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     model = model.to(device)
     model.eval()
@@ -193,6 +207,45 @@ def main():
         columns=["threshold", "accuracy", "precision", "recall", "f1"]
     )
     wandb.log({"test/metrics_by_threshold": summary_table})
+
+    # Compute classifier calibration curve
+    conf_curve, acc_curve = classifier_calibration_curve(
+        y_pred=np.array(all_preds),
+        y_true=np.array(all_labels),
+        y_confidences=np.array(all_probs),
+        num_bins=20  # you can increase or decrease number of bins
+    )
+
+    # Compute calibration error
+    cal_error = classifier_calibration_error(
+        y_pred=np.array(all_preds),
+        y_true=np.array(all_labels),
+        y_confidences=np.array(all_probs),
+        num_bins=20,
+    )
+
+    cal_curve_path = output_dir / "classifier_calibration_curve.png"
+
+    plot_calibration_curve(
+        conf=conf_curve,
+        acc=acc_curve,
+        title="Classifier Calibration Curve",
+        y_label="Empirical Accuracy",
+        relative_save_path=cal_curve_path
+    )
+
+    print(f"Classifier Calibration Error: {cal_error:.4f}")
+    wandb.log({
+        "test/calibration_error_weighted": cal_error
+    })
+
+    artifact_cal = wandb.Artifact(
+        name="classifier_calibration_curve",
+        type="figure",
+        description="Classifier calibration curve (probabilities vs empirical accuracy)"
+    )
+    artifact_cal.add_file(cal_curve_path)
+    wandb.log_artifact(artifact_cal)
     
     wandb.finish()
     

@@ -26,6 +26,10 @@ dataset:
 
 # Training Arguments (passed directly to TrainingArguments)
 training:
+  ensemble:
+    enabled: true
+    num_models: 5
+
   output_dir: "models/modernbert-classifier"
   num_train_epochs: 3
   per_device_train_batch_size: 48

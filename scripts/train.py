@@ -8,6 +8,9 @@ Usage:
 """
 
 import os
+
+from intention_jailbreak.ensemble.deepensembleclassifier import DeepEnsembleClassifier
+from intention_jailbreak.training.utils import EnsembleTrainer, SequentialEnsembleTrainer
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from pathlib import Path
@@ -69,13 +72,8 @@ def main(cfg: DictConfig):
     )
     
     # Load model
-    print(f"Loading model: {cfg.model.name}")
+    print(f"Loading tokenizer for: {cfg.model.name}")
     tokenizer = AutoTokenizer.from_pretrained(cfg.model.name)
-    model = AutoModelForSequenceClassification.from_pretrained(
-        cfg.model.name,
-        dtype=torch.bfloat16,
-        **{k: v for k, v in cfg.model.items() if k != 'name' and k != 'max_length'}
-    )
     
     # Compute sample weights if enabled (before tokenization)
     use_label_weights = cfg.dataset.get('use_label_weights', False)
@@ -108,21 +106,40 @@ def main(cfg: DictConfig):
     train_dataset = tokenize_dataset(train_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column, num_proc=cfg.dataset.num_proc)
     val_dataset = tokenize_dataset(val_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column, num_proc=cfg.dataset.num_proc)
     
+    print(f"Loading model for: {cfg.model.name}")
+    model = None
+    if cfg.training.ensemble.enabled:
+        print(f"Training an ensemble of {cfg.ensemble.num_models} models")
+        model = DeepEnsembleClassifier(
+            model_fn=lambda: AutoModelForSequenceClassification.from_pretrained(
+                    cfg.model.name,
+                    dtype=torch.bfloat16,
+                    **{k: v for k, v in cfg.model.items() if k != 'name' and k != 'max_length'}
+                ),
+            num_models=cfg.ensemble.num_models
+    )
+    else:
+        model = AutoModelForSequenceClassification.from_pretrained(
+            cfg.model.name,
+            dtype=torch.bfloat16,
+            **{k: v for k, v in cfg.model.items() if k != 'name' and k != 'max_length'}
+        )
+
     # Setup training
     training_args = TrainingArguments(**cfg.training)
     
     # Use WeightedTrainer if weights are specified, otherwise standard Trainer
-    trainer_class = WeightedTrainer if use_any_weights else Trainer
+    trainer_class =  SequentialEnsembleTrainer if cfg.training.ensemble.enabled else WeightedTrainer if use_any_weights else Trainer
     trainer = trainer_class(
-        model=model,
-        args=training_args,
-        train_dataset=train_dataset,
-        eval_dataset=val_dataset,
-        processing_class=tokenizer,
-        compute_metrics=compute_classification_metrics,
-    )
+            model=model,
+            args=training_args,
+            train_dataset=train_dataset,
+            eval_dataset=val_dataset,
+            processing_class=tokenizer,
+            compute_metrics=compute_classification_metrics,
+        )
     
-    # Train
+    # Train -- for ensemble model training is sequential and will rotate automatically
     print("Training...")
     trainer.train()
     

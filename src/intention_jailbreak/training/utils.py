@@ -5,6 +5,8 @@ import torch
 from typing import Dict, Optional
 from transformers import set_seed, Trainer
 
+from intention_jailbreak.ensemble.deepensembleclassifier import DeepEnsembleClassifier
+
 torch.set_float32_matmul_precision('high')
 
 def set_all_seeds(seed: int):
@@ -53,6 +55,62 @@ class WeightedTrainer(Trainer):
         logits = outputs.get("logits")
         
         # Compute per-sample loss (reduction='none')
+        loss_fct = torch.nn.CrossEntropyLoss(reduction='none')
+        per_sample_loss = loss_fct(logits, labels)
+        
+        # Apply sample weights if provided
+        if weights is not None:
+            weights = weights.to(per_sample_loss.device)
+            weighted_loss = per_sample_loss * weights
+            loss = weighted_loss.mean()
+        else:
+            loss = per_sample_loss.mean()
+        
+        return (loss, outputs) if return_outputs else loss
+
+class SequentialEnsembleTrainer(Trainer):
+    def __init__(self, ensemble, *args, **kwargs):
+        super().__init__(model=ensemble, *args, **kwargs)
+        self.ensemble = ensemble
+        self.current_model_idx = 0
+        self.models_trained = [False] * len(ensemble.models)
+    
+    def training_step(self, model, inputs):
+        """Only train one model at a time per training step"""
+        # Get the current model to train
+        single_model = self.ensemble.models[self.current_model_idx]
+        
+        # Perform standard training step on just this model
+        loss = self.compute_loss(single_model, inputs, return_outputs=False)
+        
+        if self.args.gradient_accumulation_steps > 1:
+            loss = loss / self.args.gradient_accumulation_steps
+        
+        loss.backward()
+        
+        return loss.detach()
+    
+    def on_epoch_end(self, args, state, control, **kwargs):
+        """Rotate to next model after each epoch"""
+        # Mark current model as trained
+        self.models_trained[self.current_model_idx] = True
+        
+        # Move to next model
+        self.current_model_idx = (self.current_model_idx + 1) % len(self.ensemble.models)
+        
+        print(f"Epoch {state.epoch} complete. Now training model {self.current_model_idx}")
+        
+        super().on_epoch_end(args, state, control, **kwargs)
+    
+    def compute_loss(self, model, inputs, return_outputs=False, num_items_in_batch=None):
+        """Compute loss for single model (same as the WeightedTrainer)"""
+        labels = inputs.pop("labels")
+        weights = inputs.pop("weight", None)
+        
+        outputs = model(**inputs)
+        logits = outputs.get("logits")
+        
+        # Compute per-sample loss
         loss_fct = torch.nn.CrossEntropyLoss(reduction='none')
         per_sample_loss = loss_fct(logits, labels)
         
