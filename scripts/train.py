@@ -127,24 +127,38 @@ def main(cfg: DictConfig):
 
     # Setup training
     training_args = TrainingArguments(**cfg.training)
+
+    cfg.ensemble.enabled
+    for cfg.
     
     # Use WeightedTrainer if weights are specified, otherwise standard Trainer
-    trainer_class =  SequentialEnsembleTrainer if cfg.ensemble.enabled else WeightedTrainer if use_any_weights else Trainer
-    trainer = trainer_class(
-            model=model,
-            args=training_args,
-            train_dataset=train_dataset,
-            eval_dataset=val_dataset,
-            processing_class=tokenizer,
-            compute_metrics=compute_classification_metrics,
-        )
-    
-    # Train -- for ensemble model training is sequential and will rotate automatically
-    print("Training...")
-    trainer.train()
-    
-    # Final model results
-    trainer.evaluate()
+    trainer_class = WeightedTrainer if use_any_weights else Trainer
+    # This is the simplest approach just train each model using the same class and then combine
+    if cfg.ensemble.enabled:
+        for idx, ensemble_member in enumerate(model.models):
+            trainer = trainer_class(
+                    model=ensemble_member,
+                    args=training_args,
+                    train_dataset=train_dataset,
+                    eval_dataset=val_dataset,
+                    processing_class=tokenizer,
+                    compute_metrics=compute_classification_metrics,
+                )
+            print(f"Training model {idx}")
+            trainer.train()
+            trainer.evaluate()
+    else:
+        trainer = trainer_class(
+                model=model,
+                args=training_args,
+                train_dataset=train_dataset,
+                eval_dataset=val_dataset,
+                processing_class=tokenizer,
+                compute_metrics=compute_classification_metrics,
+            )
+        print("Training...")
+        trainer.train()
+        trainer.evaluate()
     
     # Save model
     print("Saving model...")
