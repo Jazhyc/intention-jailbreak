@@ -11,37 +11,26 @@ class DeepEnsembleClassifier(nn.Module):
     An implementation of an ensemble for providing a rough estimate of the Bayesian predictive posterior
     distribution p(y|x, D).
     It is a simple wrapper class that instantiates N models
+
     """
     def __init__(self, model_fn: Callable, num_models: int):
         super().__init__()
         self.models = nn.ModuleList([model_fn() for _ in range(num_models)])
         self.num_models = num_models
     
-    def forward(self, **kwargs):
-        """Forward pass through all models and return averaged output."""
-        # Remove labels and weight if present (they shouldn't be in forward)
-        labels = kwargs.pop('labels', None)
-        weight = kwargs.pop('weight', None)
+    def forward(self, x):
+        probs = torch.stack([model(x) for model in self.models])  # Shape: (M, batch, num_classes)
+        mean_prob = probs.mean(dim=0)
         
-        # Get outputs from all models
-        outputs_list = [model(**kwargs) for model in self.models]
-        
-        # Stack logits and average
-        logits = torch.stack([out.logits for out in outputs_list])  # Shape: (M, batch, num_classes)
-        mean_logits = logits.mean(dim=0)
-        
-        # Return in the same format as a single model
-        # Use the first model's output as a template
-        result = type(outputs_list[0])(logits=mean_logits)
-        return result
+        return mean_prob
 
-    def save_pretrained(self, save_directory, safe_serialization=True):
+    def save_pretrained(self, save_directory):
         """Save each model in the ensemble to separate directories."""
         Path(save_directory).mkdir(parents=True, exist_ok=True)
         
         for i, model in enumerate(self.models):
             model_dir = Path(save_directory) / f"model_{i}"
-            model.save_pretrained(model_dir, safe_serialization=safe_serialization)
+            model.save_pretrained(model_dir, safe_serialization=True)
         
         # Save ensemble configuration
         config = {

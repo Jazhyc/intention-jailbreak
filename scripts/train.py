@@ -127,9 +127,6 @@ def main(cfg: DictConfig):
 
     # Setup training
     training_args = TrainingArguments(**cfg.training)
-
-    cfg.ensemble.enabled
-    for cfg.
     
     # Use WeightedTrainer if weights are specified, otherwise standard Trainer
     trainer_class = WeightedTrainer if use_any_weights else Trainer
