@@ -1,8 +1,9 @@
 import json
 from pathlib import Path
-from typing import Callable
+from typing import Callable, Optional
 import torch
 from torch import nn
+from dataclasses import dataclass
 
 @dataclass
 class EnsembleOutput:
@@ -34,7 +35,7 @@ class DeepEnsembleClassifier(nn.Module):
         all_probs = []
         for model in self.models:
             outputs = model(**kwargs)
-            logits = output.logits
+            logits = outputs.logits
             probs = torch.softmax(logits, dim=-1)
             all_logits.append(outputs.logits)
             all_probs.append(probs)
