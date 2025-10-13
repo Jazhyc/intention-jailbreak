@@ -4,25 +4,51 @@ from typing import Callable
 import torch
 from torch import nn
 
+@dataclass
+class EnsembleOutput:
+    """Output class matching transformers.modeling_outputs.SequenceClassifierOutput"""
+    logits: torch.Tensor
+    individual_logits: Optional[torch.Tensor] = None  # Shape: (num_models, batch, num_classes)
+    probs: torch.Tensor
 
 
 class DeepEnsembleClassifier(nn.Module):
     """
     An implementation of an ensemble for providing a rough estimate of the Bayesian predictive posterior
     distribution p(y|x, D).
-    It is a simple wrapper class that instantiates N models
-
+    It is a simple wrapper class that instantiates N models and averages their predictions.
     """
     def __init__(self, model_fn: Callable, num_models: int):
         super().__init__()
         self.models = nn.ModuleList([model_fn() for _ in range(num_models)])
         self.num_models = num_models
     
-    def forward(self, x):
-        probs = torch.stack([model(x) for model in self.models])  # Shape: (M, batch, num_classes)
-        mean_prob = probs.mean(dim=0)
+    def forward(self, **kwargs):
+        """
+        Forward pass through all models in the ensemble.
+
+        Returns: EnsembleOutput
+        """
+        # Get outputs from all models
+        all_logits = []
+        all_probs = []
+        for model in self.models:
+            outputs = model(**kwargs)
+            logits = output.logits
+            probs = torch.softmax(logits, dim=-1)
+            all_logits.append(outputs.logits)
+            all_probs.append(probs)
         
-        return mean_prob
+        # Stack and average logits
+        stacked_logits = torch.stack(all_logits)  # Shape: (num_models, batch, num_classes)
+        mean_logits = stacked_logits.mean(dim=0)  # Shape: (batch, num_classes) -- for compatibility, not sure how theoretically grounded this is.
+        mean_probs = torch.stack(all_probs).mean(dim=0)
+        
+        return EnsembleOutput(
+            logits=mean_logits,
+            individual_logits=stacked_logits,
+            probs=mean_probs
+        )
 
     def save_pretrained(self, save_directory):
         """Save each model in the ensemble to separate directories."""

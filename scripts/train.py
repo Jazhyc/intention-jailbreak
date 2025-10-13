@@ -10,7 +10,6 @@ Usage:
 import os
 
 from intention_jailbreak.ensemble.deepensembleclassifier import DeepEnsembleClassifier
-from intention_jailbreak.training.utils import SequentialEnsembleTrainer
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from pathlib import Path

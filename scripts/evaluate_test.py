@@ -111,9 +111,10 @@ def main():
             logits = outputs.logits
             
             # Convert to probabilities
-            probs = torch.softmax(logits, dim=-1)
+            probs = outputs.probs if isinstance(EnsembleOutput, outputs) else torch.softmax(logits, dim=-1)
             harmful_probs = probs[:, 1].float().cpu().numpy()  # Probability of harmful class
-            preds = torch.argmax(logits, dim=-1).cpu().numpy()
+            # This case for ensemble might not be necessary but just in case
+            preds = torch.argmax(probs, dim=-1).cpu().numpy() if isinstance(EnsembleOutput, outputs) else torch.argmax(logits, dim=-1).cpu().numpy()
             
             all_probs.extend(harmful_probs)
             all_preds.extend(preds)
