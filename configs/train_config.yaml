@@ -13,8 +13,9 @@ model:
 # Dataset Configuration
 dataset:
   subset: "wildguardtrain"
-  test_size: 0.8
-  val_size: 0.1
+  test_size: 0.9  # 90% for annotation set (10% for training)
+  val_size: 0.1  # 10% of training split for validation
+  test_size_from_train: 0.1  # 10% of training split for test
   random_state: *seed
   label_column: "prompt_harm_label"
   text_column: "prompt"
@@ -33,7 +34,7 @@ ensemble:
 # Training Arguments (passed directly to TrainingArguments)
 training:
   output_dir: "models/modernbert-ensemble"
-  num_train_epochs: 3
+  num_train_epochs: 5
   per_device_train_batch_size: 48
   per_device_eval_batch_size: 48
   learning_rate: 1e-4

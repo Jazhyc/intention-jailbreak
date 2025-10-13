@@ -52,7 +52,7 @@ def main(cfg: DictConfig):
     
     # Load data (filtering happens before split if enabled)
     print("Loading dataset...")
-    train_df, test_df = wildguardmix.load_and_split(
+    train_df, annotation_df = wildguardmix.load_and_split(
         subset=cfg.dataset.subset,
         test_size=cfg.dataset.test_size,
         random_state=cfg.dataset.random_state,
@@ -61,12 +61,16 @@ def main(cfg: DictConfig):
         language_cache_dir=cfg.dataset.get('language_cache_dir', 'data/cache')
     )
     
-    # Prepare data (no test set used during training)
+    print(f"Training split: {len(train_df)} samples")
+    print(f"Annotation split: {len(annotation_df)} samples")
+    
+    # Prepare data - split train_df into train/val/test (90:10:10 of the 90% training portion)
     print("Preparing data...")
-    train_dataset, val_dataset, train_df_processed, val_df_processed = prepare_classification_data(
+    train_dataset, val_dataset, test_dataset, train_df_processed, val_df_processed, test_df_processed = prepare_classification_data(
         train_df=train_df,
-        test_df=test_df,
+        test_df=None,
         val_size=cfg.dataset.val_size,
+        test_size=cfg.dataset.get('test_size_from_train', 0.1),
         label_column=cfg.dataset.label_column,
         text_column=cfg.dataset.text_column,
         positive_label=cfg.dataset.positive_label,
@@ -103,7 +107,14 @@ def main(cfg: DictConfig):
         val_weights = np.ones(len(val_dataset))
         val_dataset = val_dataset.add_column("weight", val_weights.tolist())
     
-    # Tokenize
+    # Save test set for later evaluation
+    print("Saving test set for evaluation...")
+    test_output_dir = Path("data/test_predictions")
+    test_output_dir.mkdir(parents=True, exist_ok=True)
+    test_df_processed.to_parquet(test_output_dir / "held_out_test_set.parquet", index=False)
+    print(f"Test set saved to: {test_output_dir / 'held_out_test_set.parquet'}")
+    
+    # Tokenize (no test set tokenization needed here)
     print("Tokenizing...")
     train_dataset = tokenize_dataset(train_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column, num_proc=cfg.dataset.num_proc)
     val_dataset = tokenize_dataset(val_dataset, tokenizer, cfg.model.max_length, cfg.dataset.text_column, num_proc=cfg.dataset.num_proc)
