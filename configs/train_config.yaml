@@ -30,7 +30,7 @@ ensemble:
 
 # Training Arguments (passed directly to TrainingArguments)
 training:
-  output_dir: "models/modernbert-classifier"
+  output_dir: "models/modernbert-ensemble"
   num_train_epochs: 3
   per_device_train_batch_size: 48
   per_device_eval_batch_size: 48
@@ -71,7 +71,7 @@ training:
 # WandB Configuration
 wandb:
   entity: "intention-analysis"
-  project: "classifier-training"
+  project: "classifier-ensemble"
   dir: "logs/wandb"
   run_name: null
   tags:

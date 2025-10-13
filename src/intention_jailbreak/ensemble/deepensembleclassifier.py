@@ -9,8 +9,8 @@ from dataclasses import dataclass
 class EnsembleOutput:
     """Output class matching transformers.modeling_outputs.SequenceClassifierOutput"""
     logits: torch.Tensor
-    individual_logits: Optional[torch.Tensor] = None  # Shape: (num_models, batch, num_classes)
     probs: torch.Tensor
+    individual_logits: Optional[torch.Tensor] = None  # Shape: (num_models, batch, num_classes)
 
 
 class DeepEnsembleClassifier(nn.Module):
