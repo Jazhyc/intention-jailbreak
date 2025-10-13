@@ -50,12 +50,15 @@ def main(cfg: DictConfig):
             tags=cfg.wandb.tags,
         )
     
-    # Load data
+    # Load data (filtering happens before split if enabled)
     print("Loading dataset...")
     train_df, test_df = wildguardmix.load_and_split(
         subset=cfg.dataset.subset,
         test_size=cfg.dataset.test_size,
-        random_state=cfg.dataset.random_state
+        random_state=cfg.dataset.random_state,
+        filter_english=cfg.dataset.get('filter_english', False),
+        text_column=cfg.dataset.text_column,
+        language_cache_dir=cfg.dataset.get('language_cache_dir', 'data/cache')
     )
     
     # Prepare data (no test set used during training)
