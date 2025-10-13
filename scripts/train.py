@@ -159,7 +159,12 @@ def main(cfg: DictConfig):
     # Save model
     print("Saving model...")
     final_model_dir = Path(cfg.training.output_dir) / "final_model"
-    model.save_pretrained(final_model_dir, safe_serialization=True)
+    
+    # Use safe serialization only if not an ensemble
+    if cfg.ensemble.enabled:
+        model.save_pretrained(final_model_dir)
+    else:
+        model.save_pretrained(final_model_dir, safe_serialization=True)
     tokenizer.save_pretrained(final_model_dir)
     print(f"Model saved to: {final_model_dir}")
     
