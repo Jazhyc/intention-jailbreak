@@ -232,60 +232,70 @@ def regressor_error_confidence_curve(y_pred, y_true, y_std, num_points=20, distr
 
     return np.array(out_confidences), np.array(out_errors)
 
-def plot_calibration_curve(conf, acc, y_label='Empirical Coverage Probability', title="Calibration Curve",
+def plot_calibration_curve(conf, acc, y_label='Empirical Accuracy', title="Calibration Curve",
                            relative_save_path='calibration_curve.png'):
     """
-    Plot the calibration curve for regression uncertainty as a histogram.
+    Plot the calibration curve for binary classification as a reliability diagram.
     
     Args:
-        conf: Confidence values (x-axis) - these are confidence levels (alphas)
-        acc: Accuracy values (y-axis) - these are empirical probabilities of intervals
+        conf: Confidence values (x-axis) - mean predicted probabilities per bin
+        acc: Accuracy values (y-axis) - empirical accuracy per bin
+        y_label: Label for y-axis
         title: Plot title
-        save_path: If provided, save the plot to this path
+        relative_save_path: Path to save the plot (can be absolute or relative)
     """
     plt.figure(figsize=(10, 8))
 
     # Plot the ideal calibration line (diagonal)
-    plt.plot([0, 1], [0, 1], 'k--', label="Perfect calibration")
+    plt.plot([0, 1], [0, 1], 'k--', linewidth=2, label="Perfect calibration")
 
-    # Calculate the width of bars to cover the entire [0,1] range
-    # Adjust bar positions to cover the entire range
-    if len(conf) > 1:
-        bin_width = 1.0 / (len(conf))
+    # Calculate the width of bars based on number of bins
+    num_bins = len(conf)
+    if num_bins > 1:
+        bin_width = 1.0 / num_bins
     else:
         bin_width = 0.05
 
-    # Adjust bar positions so the first bar starts at 0 and the last ends at 1
-    adjusted_conf = np.linspace(bin_width / 2, 1.0 - bin_width / 2, len(conf))
+    # Create evenly spaced bin positions
+    bin_positions = np.linspace(bin_width / 2, 1.0 - bin_width / 2, num_bins)
+    
+    # Plot bars at evenly spaced positions
+    plt.bar(bin_positions, acc, width=bin_width * 0.9, alpha=0.7,
+            edgecolor='black', linewidth=1.5, label="Model calibration", align='center')
 
-    # Plot bars to fill the entire [0,1] range
-    plt.bar(adjusted_conf, acc, width=bin_width, alpha=0.7,
-            edgecolor='black', linewidth=1, label="Model calibration")
+    # Plot line connecting bin centers
+    plt.plot(bin_positions, acc, 'ro-', linewidth=2, markersize=8, markeredgecolor='darkred', markeredgewidth=1.5)
 
-    # Plots the confidence line
-    plt.plot(adjusted_conf, acc, 'ro-', linewidth=2, markersize=6)
-
-    # Add a horizontal line at y=0 to make the bars look connected to the axis
-    plt.axhline(y=0, color='black', linewidth=0.5)
-
-    plt.xlabel('Confidence Level')
-    plt.ylabel(y_label)
-    plt.title(title)
-    plt.legend(loc='lower right')
-    plt.grid(True, alpha=0.3)
+    plt.xlabel('Confidence', fontsize=12)
+    plt.ylabel(y_label, fontsize=12)
+    plt.title(title, fontsize=14, fontweight='bold')
+    plt.legend(loc='upper left', fontsize=11)
+    plt.grid(True, alpha=0.3, linestyle='--')
 
     # Set limits to make the plot clearer
-    plt.ylim([0, 1.00])
-    plt.xlim([0, 1.00])
+    plt.ylim([0, 1.05])
+    plt.xlim([0, 1.0])
+    
+    # Add text showing number of bins
+    plt.text(0.98, 0.02, f'Bins: {num_bins}', 
+             transform=plt.gca().transAxes,
+             fontsize=10, verticalalignment='bottom', horizontalalignment='right',
+             bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    plt.tight_layout()
 
     if relative_save_path:
-        save_path = os.path.join('../results', relative_save_path)
-        # Make results directory if it doesn't exist
+        # Use the path directly (can be absolute or relative)
+        save_path = str(relative_save_path)
+        
+        # Make parent directory if it doesn't exist
         save_dir = os.path.dirname(save_path)
-        if not os.path.exists(save_dir):
+        if save_dir and not os.path.exists(save_dir):
             os.makedirs(save_dir)
 
         print(f"Saving calibration curve plot to: {save_path}")
-        plt.savefig(save_path)
+        plt.savefig(save_path, dpi=150, bbox_inches='tight')
 
         wandb.log({"calibration_curve": wandb.Image(save_path)})
+    
+    plt.close()

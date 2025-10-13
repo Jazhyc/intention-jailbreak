@@ -68,8 +68,16 @@ class DeepEnsembleClassifier(nn.Module):
             json.dump(config, f)
     
     @classmethod
-    def from_pretrained(cls, save_directory, model_fn):
-        """Load ensemble from saved models."""
+    def from_pretrained(cls, save_directory, model_class, **model_kwargs):
+        """
+        Load ensemble from saved models.
+        
+        Args:
+            save_directory: Directory containing the saved ensemble models
+            model_class: The model class to use (e.g., AutoModelForSequenceClassification)
+            **model_kwargs: Additional keyword arguments to pass to model.from_pretrained()
+                           (e.g., dtype=torch.bfloat16)
+        """
         save_path = Path(save_directory)
         
         # Load configuration
@@ -77,11 +85,14 @@ class DeepEnsembleClassifier(nn.Module):
             config = json.load(f)
         
         num_models = config["num_models"]
-        ensemble = cls(model_fn, num_models)
         
-        # Load each model
+        # Create ensemble with a dummy model_fn (will be replaced)
+        dummy_fn = lambda: None
+        ensemble = cls(dummy_fn, num_models)
+        
+        # Load each model with the provided kwargs
         for i in range(num_models):
             model_dir = save_path / f"model_{i}"
-            ensemble.models[i] = ensemble.models[i].from_pretrained(model_dir)
+            ensemble.models[i] = model_class.from_pretrained(model_dir, **model_kwargs)
         
         return ensemble

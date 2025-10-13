@@ -27,7 +27,7 @@ dataset:
   class_weight_column: "subcategory"  # Column to compute subcategory weights from
 
 ensemble:
-  enabled: False
+  enabled: True
   num_models: 3
 
 # Training Arguments (passed directly to TrainingArguments)
